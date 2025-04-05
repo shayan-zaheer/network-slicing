@@ -7,7 +7,7 @@ from mininet.log import setLogLevel
 class SmartCityTopo(Topo):
     def build(self):
         # Add Router (Acts as Gateway for all subnets)
-        router = self.addNode("r1", cls=Node, ip="10.1.0.1/24")
+        router = self.addHost("r1", ip="10.1.0.1/24")
 
         # Define Services with Subnets & Hosts
         services = {
@@ -32,7 +32,7 @@ class SmartCityTopo(Topo):
 
 def run():
     setLogLevel("info")
-    net = Mininet(topo=SmartCityTopo(), controller=Controller, switch=OVSSwitch)
+    net = Mininet(topo=SmartCityTopo(), controller=Controller)
 
     # Start Network
     net.start()
@@ -40,6 +40,18 @@ def run():
     # Enable IP Forwarding on the Router
     router = net.get("r1")
     router.cmd("sysctl -w net.ipv4.ip_forward=1")
+
+    # Attach subnet interfaces to the router
+    subnets = {
+        "10.2.0.1/24": "r1-eth1",
+        "10.3.0.1/24": "r1-eth2",
+        "10.4.0.1/24": "r1-eth3",
+        "10.5.0.1/24": "r1-eth4",
+        "10.6.0.1/24": "r1-eth5"
+    }
+    
+    for ip, iface in subnets.items():
+        router.cmd(f"ifconfig {iface} {ip}")
 
     print("🚀 Smart City Subnet-based Topology is Up!")
     

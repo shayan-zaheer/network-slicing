@@ -11,12 +11,12 @@ class SmartCityTopo(Topo):
 
         # Services with their Subnets & Host Counts
         services = {
-            "Traffic":  ("10.1.0.", 16),
-            "Healthcare": ("10.2.0.", 16),
-            "PublicSafety": ("10.3.0.", 16),
-            "EnergyGrid": ("10.4.0.", 16),
-            "SmartHomes": ("10.5.0.", 16),
-            "Education": ("10.6.0.", 16)
+            "Traffic":  ("10.1.0.", 2),
+            "Healthcare": ("10.2.0.", 2),
+            "PublicSafety": ("10.3.0.", 2),
+            "EnergyGrid": ("10.4.0.", 2),
+            "SmartHomes": ("10.5.0.", 2),
+            "Education": ("10.6.0.", 2)
         }
 
         # Create sub-switches and connect hosts

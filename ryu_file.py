@@ -6,7 +6,6 @@ from ryu.controller.handler import set_ev_cls
 from ryu.lib.packet import packet, ethernet, ipv4, ether_types
 from ryu.ofproto import ofproto_v1_3
 
-
 class SmartCityController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 

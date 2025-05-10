@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
     <link href="https://unpkg.com/vis-network@9.1.2/styles/vis-network.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
         body {
@@ -78,32 +79,36 @@
 </head>
 
 <body>
-    <h1>Smart SDN Flow Statistics Dashboard</h1>
+    <h1 class="text-4xl font-bold ">Smart SDN Flow Statistics Dashboard</h1>
     <div class="container">
 
         <div class="card">
-            <h2>Real-Time Bandwidth Usage (Mbps)</h2>
+            <h2 class="text-3xl font-semibold">Real-Time Bandwidth Usage (Mbps)</h2>
             <canvas id="bandwidthChart"></canvas>
         </div>
 
         <div class="card">
-            <h2>Number of Active Flows</h2>
+            <h2 class="text-3xl font-semibold">Number of Active Flows</h2>
             <canvas id="flowsChart"></canvas>
         </div>
     </div>
     <div class="card">
-        <h3>Top Talkers</h3>
-        <table id="topTalkersTable">
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>IP Address</th>
-                    <th>Packet Count</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <h3 class="font-semibold text-gray-800 mb-4 border-b pb-2 text-3xl">Top Talkers</h3>
+        <div class="overflow-x-auto">
+            <table id="topTalkersTable" class="min-w-full table-auto text-sm text-left text-gray-700">
+                <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+                    <tr class="text-2xl">
+                        <th class="px-4 py-3">Rank</th>
+                        <th class="px-4 py-3">IP Address</th>
+                        <th class="px-4 py-3">Packet Count</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                </tbody>
+            </table>
+        </div>
     </div>
+
 
     <div class="footer">
         &copy; 2025 Smart SDN Monitor
@@ -114,7 +119,8 @@
 
         const bandwidthCtx = document.getElementById('bandwidthChart').getContext('2d');
         const flowsCtx = document.getElementById('flowsChart').getContext('2d');
-
+        const defaultBarColor = 'rgba(54, 162, 235, 0.7)';
+        const alertBarColor = 'rgba(255, 99, 132, 0.7)';
         let bandwidthChart = new Chart(bandwidthCtx, {
             type: 'bar',
             data: {
@@ -122,21 +128,13 @@
                 datasets: [{
                     label: 'Bandwidth (Mbps)',
                     data: [],
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    backgroundColor: Array(6).fill(defaultBarColor),
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
                 }]
             },
             options: { responsive: true, scales: { y: { beginAtZero: true } } }
         });
-        const dpidNameMap = {
-            3: "Healthcare ",
-            4: "Public Safety ",
-            5: "Energy Grid ",
-            6: "Smart Homes ",
-            7: "Education ",
-            2: "Traffic Control",
-        };
 
         let flowsChart = new Chart(flowsCtx, {
             type: 'line',
@@ -170,6 +168,20 @@
             flowsChart.data.datasets[0].data = flowsData;
             flowsChart.update();
         });
+        socket.on('alert', function (alerts) {
+            const defaultBarColor = 'rgba(54, 162, 235, 0.7)';
+            const alertBarColor = 'rgba(255, 99, 132, 0.7)';
+            const backgroundColors = bandwidthChart.data.datasets[0].backgroundColor;
+
+            Object.entries(alerts).forEach(([service, exceeded]) => {
+                const index = bandwidthChart.data.labels.indexOf(service);
+                if (index !== -1) {
+                    backgroundColors[index] = exceeded ? alertBarColor : defaultBarColor;
+                }
+            });
+
+            bandwidthChart.update();
+        });
         socket.on('top_talkers', function (data) {
             const tableBody = document.querySelector('#topTalkersTable tbody');
             tableBody.innerHTML = ''; // Clear previous table rows
@@ -177,14 +189,17 @@
             // Assuming 'data.top' contains the top talkers list
             data.top.forEach((talker, index) => {
                 const row = document.createElement('tr');
-
+                row.className = 'hover:bg-gray-200 transition duration-200';
                 const rankCell = document.createElement('td');
+                rankCell.className = 'text-xl';
                 rankCell.textContent = index + 1;
 
                 const ipCell = document.createElement('td');
+                ipCell.className = 'text-xl';
                 ipCell.textContent = talker[0]; // Assuming 'talker[0]' is the IP address
 
                 const packetsCell = document.createElement('td');
+                packetsCell.className = 'text-xl';
                 packetsCell.textContent = talker[1]; // Assuming 'talker[1]' is the packet count
 
                 row.appendChild(rankCell);

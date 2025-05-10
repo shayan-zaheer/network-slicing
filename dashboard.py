@@ -5,7 +5,7 @@ eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'  # Optional but recommended
-socketio = SocketIO(app, cors_allowed_origins='*')  # Enable cross-origin if needed
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode="eventlet")  # Enable cross-origin if needed
 
 # Dictionary to store latest stats for each switch
 stats = {}
@@ -24,5 +24,12 @@ def handle_flow_stats(data):
 def handle_top_talkers(data):
     print("Received Top Talkers:", data)
     socketio.emit('top_talkers', data)
+@socketio.on('alert')
+def handle_alert(data):
+    print("Received Alert:", data)
+    socketio.emit('alert', data)
+
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    import eventlet
+    eventlet.monkey_patch()
+    socketio.run(app, host='0.0.0.0', port=5000)

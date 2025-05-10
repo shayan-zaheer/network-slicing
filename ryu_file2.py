@@ -24,7 +24,6 @@ class SmartCityController(app_manager.RyuApp):
             7: "Education Switch",
             2: "Traffic Control Switch",
         }
-
         # Define networks once at initialization
         self.healthcare_network = '10.2.0.0/24'
         self.public_safety_network = '10.3.0.0/24'
@@ -37,7 +36,57 @@ class SmartCityController(app_manager.RyuApp):
         threading.Thread(target=self.poll_stats, daemon=True).start()
         self.traffic_counter = {}  # Dictionary to track total packets per IP
         hub.spawn(self.emit_top_talkers)
+        self.bandwidth_thresholds = {
+            'Healthcare Switch': {'min': 400, 'max': 800},
+            'Education Switch': {'min': 50, 'max': 200},
+            'Public Safety Switch': {'min': 300, 'max': 700},
+            'Energy Grid Switch': {'min': 200, 'max': 500},
+            'Smart Homes Switch': {'min': 100, 'max': 300},
+            'default': {'min': 100, 'max': 1000}
+        }
+        # Track usage (Mbps)
+        self.bandwidth_usage = {
+           'Healthcare Switch': 0,
+            'Education Switch': 0,
+            'Public Safety Switch': 0,
+            'Energy Grid Switch': 0,
+            'Smart Homes Switch': 0,
+            'default':0
+        }
+        self.prev_byte_count = {
+           'Healthcare Switch': 0,
+            'Education Switch': 0,
+            'Public Safety Switch': 0,
+            'Energy Grid Switch': 0,
+            'Smart Homes Switch': 0,
+            'default':0
+        }
 
+        self.poll_interval = 10  # seconds
+        self.datapaths = {}      # to store connected switches
+        self.monitor_thread = hub.spawn(self._monitor)
+        
+    @set_ev_cls(ofp_event.EventOFPStateChange, [MAIN_DISPATCHER])
+    def _state_change_handler(self, ev):
+        datapath = ev.datapath
+        if datapath.id not in self.datapaths:
+            self.logger.info(f"Registering datapath {datapath.id}")
+            self.datapaths[datapath.id] = datapath
+            
+    def _monitor(self):
+        while True:
+            for dp in self.datapaths.values():
+                self._request_stats(dp)
+            hub.sleep(self.poll_interval)
+            
+    def _request_stats(self, datapath):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        self.logger.debug(f"Requesting stats from switch {datapath.id}")
+        req = parser.OFPFlowStatsRequest(datapath)
+        datapath.send_msg(req)
+                   
     def poll_stats(self):
         while True:
             for dp in self.datapaths.values():
@@ -47,12 +96,53 @@ class SmartCityController(app_manager.RyuApp):
                 req = parser.OFPFlowStatsRequest(dp)
                 dp.send_msg(req)
             time.sleep(3)
+            
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def flow_stats_reply_handler(self, ev):
         body = ev.msg.body
         total_flows = len(body)
         total_bytes = sum(flow.byte_count for flow in body)
         total_packets = sum(flow.packet_count for flow in body)
+
+        # Reset bandwidth usage for each service
+        for service in self.bandwidth_usage:
+            self.bandwidth_usage[service] = 0
+            
+        # Calculate bandwidth usage from flows
+        for flow in body:
+            match = flow.match
+            if 'ipv4_src' in flow.match:
+                src_ip = match.get('ipv4_src')
+                byte_count = flow.byte_count 
+                if src_ip and src_ip.startswith("10.2."):
+                    self.bandwidth_usage['Healthcare Switch'] += byte_count
+                elif src_ip and src_ip.startswith("10.6."):
+                    self.bandwidth_usage['Education Switch'] += byte_count
+                elif src_ip and src_ip.startswith("10.3."):
+                    self.bandwidth_usage['Public Safety Switch'] += byte_count
+                elif src_ip and src_ip.startswith("10.4."):
+                    self.bandwidth_usage['Energy Grid Switch'] += byte_count
+                elif src_ip and src_ip.startswith("10.5."):
+                    self.bandwidth_usage['Smart Homes Switch'] += byte_count
+                    
+        # Initialize alerts dictionary
+        alerts = {}
+        
+        # Calculate bandwidth usage in Mbps and check thresholds
+        for service, bytes_used in self.bandwidth_usage.items():
+            mbps = (bytes_used * 8) / (1024 * 1024) / 10  # bits/sec to Mbps (10 sec window)
+            max_bw = self.bandwidth_thresholds[service]['max']
+            exceeded = mbps > max_bw
+
+            if exceeded:
+                self.logger.warning(f"[ALERT] {service} bandwidth exceeded: {mbps:.2f} Mbps > max {max_bw} Mbps")
+
+            # Store alert status
+            alerts[service] = exceeded
+        
+        # Only emit alerts if at least one service is exceeding threshold
+        if any(alerts.values()):
+            self.sio.emit('alert', alerts)
 
         dpid = ev.msg.datapath.id
         name = self.dpid_name_map.get(dpid, f"Switch {dpid}")

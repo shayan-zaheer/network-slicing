@@ -17,12 +17,12 @@ class SmartCityController(app_manager.RyuApp):
         super(SmartCityController, self).__init__(*args, **kwargs)
         self.datapaths = {}
         self.dpid_name_map = {
-            3: "Healthcare Switch",
-            4: "Public Safety Switch",
-            5: "Energy Grid Switch",
-            6: "Smart Homes Switch",
-            7: "Education Switch",
-            2: "Traffic Control Switch",
+            1: "Traffic Control Switch",
+            2: "Healthcare Switch",
+            3: "Public Safety Switch",
+            4: "Energy Grid Switch",
+            5: "Smart Homes Switch",
+            6: "Education Switch",
         }
 
         # Define networks once at initialization
@@ -41,7 +41,6 @@ class SmartCityController(app_manager.RyuApp):
     def poll_stats(self):
         while True:
             for dp in self.datapaths.values():
-                self.logger.info("Sending mock stat to dashboard")
                 ofproto = dp.ofproto
                 parser = dp.ofproto_parser
                 req = parser.OFPFlowStatsRequest(dp)

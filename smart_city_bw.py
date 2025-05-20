@@ -24,7 +24,7 @@ class SmartCityTopo(Topo):
 
         # Create Sub-switches and Connect Hosts
         for i, (service, (subnet, gw, host_count)) in enumerate(services.items(), start=2):
-            switch = self.addSwitch(f"s{i}")  # Each service gets a dedicated switch
+            switch = self.addSwitch(f"s{i-1}")  # Each service gets a dedicated switch
             self.addLink(router, switch)  # Connect service switch to the router
             
             # Create Hosts
@@ -35,7 +35,7 @@ class SmartCityTopo(Topo):
 
 def configure_qos(net):
     """Configure QoS on all switches in the network"""
-    print("\n⚙️ Configuring QoS settings for all switches...")
+    print("\nConfiguring QoS settings for all switches...")
     
     # Create the QoS configuration script
     script_path = "/tmp/qos_config.py"
@@ -59,7 +59,7 @@ def run_cmd(cmd):
 
 def configure_switch_qos(switch_name):
     """Configure QoS on a specific switch."""
-    print(f"\\n🔧 Configuring QoS for switch {switch_name}...")
+    print(f"\\nConfiguring QoS for switch {switch_name}...")
     
     # Get the switch's interfaces
     interfaces_output = run_cmd(f"ovs-vsctl list-ports {switch_name}")
@@ -74,7 +74,7 @@ def configure_switch_qos(switch_name):
         if not interface.strip():
             continue
             
-        print(f"  ⚙️  Setting up QoS on interface {interface}")
+        print(f" Setting up QoS on interface {interface}")
         
         # Clear any existing QoS configurations
         run_cmd(f"ovs-vsctl clear port {interface} qos")
@@ -92,12 +92,12 @@ def configure_switch_qos(switch_name):
                 f"--id=@q5 create queue other-config:min-rate=50000000 other-config:max-rate=200000000")        # Education: 50 Mbps min, 200 Mbps max
     
     # Verify QoS configuration
-    print(f"  ✅ QoS configuration completed for {switch_name}")
+    print(f" QoS configuration completed for {switch_name}")
     return True
 
 def main():
     """Configure QoS for all switches in the network."""
-    print("🌆 Smart City QoS Configuration Tool")
+    print(" Smart City QoS Configuration Tool")
     print("====================================")
     
     # Get all switches
@@ -115,7 +115,7 @@ def main():
         configure_switch_qos(switch)
     
     # Verify QoS configuration
-    print("\\n🔍 QoS Configuration Summary:")
+    print("\\n QoS Configuration Summary:")
     for switch in switches:
         if not switch.strip():
             continue
@@ -130,7 +130,7 @@ def main():
             queue_count = len(re.findall(r"_uuid", queue_info))
             print(f"    with {queue_count} queues")
     
-    print("\\n✅ QoS configuration completed successfully!")
+    print("\\n QoS configuration completed successfully!")
     print("Queue priorities:")
     print("  Queue 1: Healthcare (400 Mbps min, 800 Mbps max)")
     print("  Queue 2: Public Safety (300 Mbps min, 700 Mbps max)")
